@@ -25,6 +25,23 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Protect against disabled accounts
+  const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(request.nextUrl.pathname)
+  if (user && !isAuthPage) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (profile && profile.is_enabled === false) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.search = '?error=disabled'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // getUser() transparently refreshes an expired access token, which
   // ROTATES the refresh token and writes the new cookies onto
   // `supabaseResponse` via setAll() above. Any response we return in

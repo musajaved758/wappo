@@ -36,11 +36,16 @@ function LoginPageInner() {
   // account. After a successful sign-in we send them to the join
   // page to accept rather than to /dashboard.
   const inviteToken = searchParams.get("invite");
+  const queryError = searchParams.get("error");
   const t = useTranslations("LoginPage");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    queryError === "disabled"
+      ? "Your account has been deactivated. Please contact support."
+      : null
+  );
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
