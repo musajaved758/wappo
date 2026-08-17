@@ -49,6 +49,20 @@ describe("verifyMetaWebhookSignature", () => {
     expect(verifyMetaWebhookSignature("{}", "sha256=tooshort")).toBe(false);
   });
 
+  it("accepts a request signed with an override secret", () => {
+    const body = "{}";
+    const customSecret = "custom-app-secret-123";
+    const header = signedHeader(body, customSecret);
+    expect(verifyMetaWebhookSignature(body, header, customSecret)).toBe(true);
+  });
+
+  it("rejects when signature does not match override secret", () => {
+    const body = "{}";
+    const customSecret = "custom-app-secret-123";
+    const header = signedHeader(body, "different-secret");
+    expect(verifyMetaWebhookSignature(body, header, customSecret)).toBe(false);
+  });
+
   describe("fail-closed when secret is missing", () => {
     const originalSecret = process.env.META_APP_SECRET;
     beforeEach(() => {

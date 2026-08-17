@@ -21,11 +21,12 @@ import crypto from 'node:crypto'
 export function verifyMetaWebhookSignature(
   rawBody: string,
   signatureHeader: string | null,
+  secretOverride?: string | null,
 ): boolean {
-  const secret = process.env.META_APP_SECRET
+  const secret = secretOverride || process.env.META_APP_SECRET
   if (!secret) {
     console.error(
-      '[webhook] META_APP_SECRET is not set — rejecting request. ' +
+      '[webhook] META_APP_SECRET is not set (and no override provided) — rejecting request. ' +
         'Configure the env var (Meta → App Settings → Basic → App Secret) ' +
         'to enable signature verification.',
     )

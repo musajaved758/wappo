@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- Idempotent migration â€” safe to run multiple times.
 -- Uses IF NOT EXISTS for tables/indexes and DROP IF EXISTS
 -- for policies/triggers (Postgres has no CREATE POLICY IF NOT EXISTS).
@@ -194,6 +194,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_config (
   waba_id TEXT,
   access_token TEXT NOT NULL,
   verify_token TEXT,
+  meta_app_secret TEXT,
   status TEXT NOT NULL DEFAULT 'disconnected' CHECK (status IN ('connected', 'disconnected')),
   connected_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),

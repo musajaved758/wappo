@@ -176,19 +176,83 @@ export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
 
-  if (!verifyMetaWebhookSignature(rawBody, signature)) {
-    // 401 (not 200) — we want Meta's delivery dashboard to show failures
-    // loudly if a misconfiguration causes signatures to stop matching,
-    // rather than silently eating events.
-    console.warn('[webhook] rejected request with invalid signature')
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-  }
-
   let body: { entry?: WhatsAppWebhookEntry[] }
   try {
     body = JSON.parse(rawBody)
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  // Attempt to resolve the account-specific App Secret
+  let appSecret: string | null = null
+  try {
+    let phoneNumberId: string | null = null
+    let wabaId: string | null = null
+    let templateId: string | null = null
+
+    if (body.entry && body.entry.length > 0) {
+      const entry = body.entry[0]
+      if (entry.id) {
+        wabaId = entry.id
+      }
+      if (entry.changes && entry.changes.length > 0) {
+        const change = entry.changes[0]
+        const value = change.value as any
+        if (value?.metadata?.phone_number_id) {
+          phoneNumberId = value.metadata.phone_number_id
+        }
+        if (value?.message_template_id) {
+          templateId = String(value.message_template_id)
+        }
+      }
+    }
+
+    let configRow = null
+    if (phoneNumberId) {
+      const { data } = await supabaseAdmin()
+        .from('whatsapp_config')
+        .select('*')
+        .eq('phone_number_id', phoneNumberId)
+        .maybeSingle()
+      configRow = data
+    }
+    if (!configRow && wabaId) {
+      const { data } = await supabaseAdmin()
+        .from('whatsapp_config')
+        .select('*')
+        .eq('waba_id', wabaId)
+        .maybeSingle()
+      configRow = data
+    }
+    if (!configRow && templateId) {
+      const { data: template } = await supabaseAdmin()
+        .from('message_templates')
+        .select('account_id')
+        .eq('meta_template_id', templateId)
+        .maybeSingle()
+      if (template?.account_id) {
+        const { data } = await supabaseAdmin()
+          .from('whatsapp_config')
+          .select('*')
+          .eq('account_id', template.account_id)
+          .maybeSingle()
+        configRow = data
+      }
+    }
+
+    if (configRow?.meta_app_secret) {
+      appSecret = decrypt(configRow.meta_app_secret)
+    }
+  } catch (err) {
+    console.warn('[webhook] Failed to resolve account-specific app secret, falling back to process.env.META_APP_SECRET:', err)
+  }
+
+  if (!verifyMetaWebhookSignature(rawBody, signature, appSecret)) {
+    // 401 (not 200) — we want Meta's delivery dashboard to show failures
+    // loudly if a misconfiguration causes signatures to stop matching,
+    // rather than silently eating events.
+    console.warn('[webhook] rejected request with invalid signature')
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
   // Process AFTER the response so we ack Meta within their ~20s timeout

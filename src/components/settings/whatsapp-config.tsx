@@ -66,9 +66,12 @@ export function WhatsAppConfig() {
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [wabaId, setWabaId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [metaAppSecret, setMetaAppSecret] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
   const [pin, setPin] = useState('');
   const [tokenEdited, setTokenEdited] = useState(false);
+  const [metaAppSecretEdited, setMetaAppSecretEdited] = useState(false);
+  const [showAppSecret, setShowAppSecret] = useState(false);
 
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
@@ -118,17 +121,21 @@ export function WhatsAppConfig() {
         setPhoneNumberId(data.phone_number_id || '');
         setWabaId(data.waba_id || '');
         setAccessToken(MASKED_TOKEN);
+        setMetaAppSecret(data.meta_app_secret ? MASKED_TOKEN : '');
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setMetaAppSecretEdited(false);
       } else {
         setConfig(null);
         setPhoneNumberId('');
         setWabaId('');
         setAccessToken('');
+        setMetaAppSecret('');
         setVerifyToken('');
         setPin('');
         setTokenEdited(false);
+        setMetaAppSecretEdited(false);
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
@@ -208,6 +215,10 @@ export function WhatsAppConfig() {
         // simple token rotation, leaving it blank skips re-register.
         pin: pin.trim() || null,
       };
+
+      if (metaAppSecretEdited) {
+        payload.meta_app_secret = metaAppSecret.trim() || null;
+      }
 
       if (tokenEdited && accessToken !== MASKED_TOKEN && accessToken.trim()) {
         payload.access_token = accessToken.trim();
@@ -353,8 +364,10 @@ export function WhatsAppConfig() {
       setPhoneNumberId('');
       setWabaId('');
       setAccessToken('');
+      setMetaAppSecret('');
       setVerifyToken('');
       setTokenEdited(false);
+      setMetaAppSecretEdited(false);
       setConnectionStatus('disconnected');
       setResetReason(null);
       setStatusMessage('');
@@ -615,6 +628,43 @@ export function WhatsAppConfig() {
                   {t('tokenHidden')}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">
+                {t('metaAppSecret')}
+                <span className="ml-1 text-muted-foreground">{t('optional')}</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  type={showAppSecret ? 'text' : 'password'}
+                  placeholder={t('metaAppSecretPlaceholder')}
+                  value={metaAppSecret}
+                  onChange={(e) => {
+                    setMetaAppSecret(e.target.value);
+                    setMetaAppSecretEdited(true);
+                  }}
+                  onFocus={() => {
+                    if (metaAppSecret === MASKED_TOKEN) {
+                      setMetaAppSecret('');
+                      setMetaAppSecretEdited(true);
+                    }
+                  }}
+                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAppSecret(!showAppSecret)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showAppSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {config && !metaAppSecretEdited && metaAppSecret === MASKED_TOKEN
+                  ? t('metaAppSecretHidden')
+                  : t('metaAppSecretHint')}
+              </p>
             </div>
 
             <div className="space-y-2">
